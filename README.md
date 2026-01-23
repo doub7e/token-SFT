@@ -110,10 +110,6 @@ python train_v2.py \
     --num_train_epochs 3 \
     --learning_rate 2e-5
 ```
-or 
-```bash
-bash train.sh
-```
 
 DeepSpeed is supported via `--deepspeed_config` (Zero-2/Zero-3). For example:
 
