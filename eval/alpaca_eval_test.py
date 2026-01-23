@@ -55,26 +55,15 @@ def save_json(data, path):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 STRATEGY_KEYWORDS = [
-    "step_cosine_entropy_gate",
-    "step_linear_prob_inverse",
-    "step_exp_loss_boost",
-    "warmup_cosine_floor",
-    "adaptive_log_decay",
-    "gated_entropy_step",
-    "long_sft_step",
-    "delayed_cosine_high",
-    "mid_point_fast",
-    "boosted_cold_start",
-    "fixed_05",
-    "epoch_step",
-    "half_epoch_decay",
-    "linear_full",
-    "celoss",
-    "coldstart",
-    "cold_start",
-    "entropy",
-    "entropydecay",
-    "sft",
+   "strategy1",
+   "strategy2",
+   "strategy3",
+   "strategy4",
+   "strategy5",
+   "strategy6",
+   "strategy7",
+   "strategy8",
+   "strategy9",
 ]
 
 

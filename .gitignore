@@ -11,6 +11,7 @@ env/
 venv/
 wandb/
 output/
+experiment/
 *.sqlite3
 .DS_Store
 .ipynb_checkpoints/

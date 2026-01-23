@@ -31,6 +31,8 @@ This ensures **tightness + stability**, combining the best of SFT and RL while k
 
 ## 📰 News
 
+**📄 2026-01-23**: Added support for DeepSpeed and LoRA.
+
 **📄 2025-09-28**: Released ASFT code and paper - [Paper](ASFT.pdf) | [Code](https://github.com/zhuchichi56/ASFT)
 
 ---
@@ -104,7 +106,7 @@ python train_v2.py \
     --model_name_or_path models/your-model \
     --mode asft \
     --data_path data/your-data.jsonl \
-    --kl_weight 0.05 \
+    --kl_weight 0.03 \
     --num_train_epochs 3 \
     --learning_rate 2e-5
 ```
@@ -113,7 +115,48 @@ or
 bash train.sh
 ```
 
-> Warning: When using DeepSpeed, numerical differences can make DFT variants ineffective.
+DeepSpeed is supported via `--deepspeed_config` (Zero-2/Zero-3). For example:
+
+```bash
+deepspeed --num_gpus 8 train_v2.py \
+    --deepspeed_config path/to/ds_zero2_bf16.json \
+    --model_name_or_path models/your-model \
+    --mode asft \
+    --data_path data/your-data.jsonl \
+    --kl_weight 0.03 \
+    --num_train_epochs 3 \
+    --learning_rate 2e-5
+```
+
+> Note: For mixed precision (bf16/fp16), we recommend `kl_weight=0.03`. Larger KL weights amplify precision noise and can destabilize training, leading to degraded accuracy. Setting `0.03` keeps the KL anchor effective without over-regularizing under lower precision.
+
+#### 3. LoRA (Recommended)
+
+We recommend LoRA with `rank=8`, `lora_alpha=16`, `lora_dropout=0.05`, and **learning rate `5e-4`** for medical tasks. In our grid, `lr=5e-4, r=8` performs best on average and is noticeably stronger than `lr=2e-5` under the same rank.
+
+Example (LoRA):
+
+```bash
+python train_v2.py \
+    --model_name_or_path models/your-model \
+    --mode asft \
+    --data_path data/your-data.jsonl \
+    --use_lora True \
+    --lora_r 8 \
+    --lora_alpha 16 \
+    --lora_dropout 0.05 \
+    --learning_rate 5e-4
+```
+
+Partial grid (Med, LLaMA2-7B):
+
+| lr | rank | medqa | mmlu | medmcqa | avg |
+|----|------|-------|------|---------|-----|
+| 2.00E-05 | 8  | 0.3064 | 0.3366 | 0.3376 | 0.3269 |
+| 5.00E-05 | 8  | 0.3299 | 0.3607 | 0.3464 | 0.3457 |
+| 1.00E-04 | 8  | 0.3511 | 0.3896 | 0.3588 | 0.3665 |
+| 2.00E-04 | 4  | 0.3692 | 0.4188 | 0.3717 | 0.3866 |
+| 5.00E-04 | 8  | 0.3951 | 0.4147 | 0.3737 | 0.3945 |
 
 #### 3. Evaluation
 

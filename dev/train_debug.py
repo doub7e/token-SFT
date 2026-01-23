@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
 
+
 def set_random_seed(seed: int) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed)
@@ -421,6 +422,7 @@ def train(
 
     if gradient_checkpointing:
         model.gradient_checkpointing_enable()
+
 
     # Load tokenizer
     tokenizer = transformers.AutoTokenizer.from_pretrained(

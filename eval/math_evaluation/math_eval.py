@@ -19,8 +19,9 @@ from data_loader import load_data
 from python_executor import PythonExecutor
 from model_utils import load_hf_lm_and_tokenizer, generate_completions
 
-# List of available GPU IDs
-AVAILABLE_GPUS = ["3"]  
+# List of available GPU IDs (override with env MATH_EVAL_GPUS="0,1,2,3")
+_gpu_env = os.environ.get("MATH_EVAL_GPUS", "3")
+AVAILABLE_GPUS = [g.strip() for g in _gpu_env.split(",") if g.strip()]
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -174,6 +175,11 @@ def merge_results(args, data_name, world_size):
 
 
 def setup(args):
+    # Use spawn to avoid CUDA init issues with forked subprocesses.
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass
     # 使用预定义的GPU列表
     world_size = len(AVAILABLE_GPUS)
     print(f"使用 {world_size} 个GPU: {AVAILABLE_GPUS}")
