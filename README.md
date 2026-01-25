@@ -173,6 +173,17 @@ python eval/medeval/vllm_medical_test.py
 
 ---
 
+## 📦 Data Access
+
+Large-scale training data is not stored in this repository. Please download it from the Hugging Face dataset repository:
+`chichi56/ASFT`
+
+You can also download all dataset files with the provided script:
+
+```bash
+python download_data.py --output_dir data
+```
+
 ## 📚 Citation
 
 If you find this work useful, please cite:
