@@ -8,7 +8,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 MERGE_SCRIPT=${MERGE_SCRIPT:-"$SCRIPT_DIR/merge_lora.py"}
 
 # ============ User Config ============
-BASE_MODEL_PATH=${BASE_MODEL_PATH:-"/volume/pt-train/users/wzhang/ghchen/zh/models/Llama-2-7b"}
+BASE_MODEL_PATH=${BASE_MODEL_PATH:-"/path/to/base-model"}
 
 # LoRA experiments root dir (each subdir contains one LoRA adapter)
 LORA_ROOT_DIR=${LORA_ROOT_DIR:-"output/grid_search_lora_qv"}

@@ -11,10 +11,10 @@ TRAIN_SCRIPT=${TRAIN_SCRIPT:-"$SCRIPT_DIR/train_lora.py"}
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-"6"}
 
 # Path to the pretrained model (make sure the model is downloaded)
-MODEL_PATH=${MODEL_PATH:-"/volume/pt-train/users/wzhang/ghchen/zh/models/Llama-2-7b"}
+MODEL_PATH=${MODEL_PATH:-"/path/to/model"}
 
 # Path to the training data
-DATA_PATH=${DATA_PATH:-"/volume/pt-train/users/wzhang/ghchen/zh/code/Jy/data/train_medmcqa_alpaca_10k.jsonl"}
+DATA_PATH=${DATA_PATH:-"data/your-data.jsonl"}
 
 # Output directory
 OUTPUT_DIR=${OUTPUT_DIR:-"output/test_train_asft_lora"}

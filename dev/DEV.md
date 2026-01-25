@@ -7,7 +7,7 @@ We tested baseline DDP, DeepSpeed Zero-2, and Zero-3 with bf16/fp16, plus optimi
 
 
 - **bf16 is always more stable than fp16**; fp16 requires careful loss scale settings and still lags behind in accuracy.
-- **DeepSpeed Zero-2 + bf16** is the best overall solution for stability and accuracy.
+- **DeepSpeed Zero (Zero-2/Zero-3)** is less stable in practice; **native (non-DeepSpeed) runs** are the most stable overall.
 - **KL weight ≈ 0.03** consistently yields the highest medical accuracy with bf16; larger KL weights hurt stability.
 - **Optimizer alignment (AdamW)** improves results for both Zero-2 and Zero-3 compared to default optimizer settings.
 

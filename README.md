@@ -94,8 +94,19 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/zhuchichi56/ASFT.git
 cd ASFT
+conda create -n asft python=3.10
+conda activate asft
 pip install -r requirements.txt
 ```
+
+If you need flash-attn (prebuilt wheel):
+
+```bash
+wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+pip install flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+```
+
+> Note: install a matching PyTorch build first (e.g., CUDA 12 + PyTorch 2.4) before installing flash-attn.
 
 #### 2. Basic Training
 
@@ -111,11 +122,11 @@ python train_v2.py \
     --learning_rate 2e-5
 ```
 
-DeepSpeed is supported via `--deepspeed_config` (Zero-2/Zero-3). For example:
+DeepSpeed is supported via `--deepspeed_config` (Zero-2/Zero-3). Config files are in `scripts/` (e.g., `scripts/ds_zero2_bf16.json`). In practice, DeepSpeed Zero tends to be less stable; native (non-DeepSpeed) runs are the most stable overall. For example:
 
 ```bash
 deepspeed --num_gpus 8 train_v2.py \
-    --deepspeed_config path/to/ds_zero2_bf16.json \
+    --deepspeed_config scripts/ds_zero2_bf16.json \
     --model_name_or_path models/your-model \
     --mode asft \
     --data_path data/your-data.jsonl \
