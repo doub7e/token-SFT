@@ -31,9 +31,11 @@ This ensures **tightness + stability**, combining the best of SFT and RL while k
 
 ## 📰 News
 
+**📄 2026-01-30**: Accepted to ICLR 2026.
+
 **📄 2026-01-23**: Added support for DeepSpeed and LoRA.
 
-**📄 2025-09-28**: Released ASFT code and paper - [Paper](ASFT.pdf) | [Code](https://github.com/zhuchichi56/ASFT)
+**📄 2025-09-28**: Released ASFT code and paper - [Paper](asft.pdf) | [Code](https://github.com/zhuchichi56/ASFT)
 
 ---
 
