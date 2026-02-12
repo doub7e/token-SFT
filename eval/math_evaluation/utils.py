@@ -78,6 +78,7 @@ def load_prompt(data_name, prompt_type, num_shots):
 
 
 PROMPT_TEMPLATES = {
+    "plain": ("{input}", "{output}", "\n\n"),
     "direct": ("Question: {input}\nAnswer: ", "{output}", "\n\n"),
     "cot": ("Question: {input}\nAnswer: ", "{output}", "\n\n\n"),
     "pal": ("Question: {input}\n\n", "{output}", "\n---\n"),

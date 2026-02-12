@@ -4,7 +4,8 @@ from glob import glob
 
 def get_model_scores(prefix):
     """获取指定前缀模型的四个评测成绩"""
-    base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
+    # base_path = "/volume/pt-train/users/wzhang/ghchen/zh/code/loss-landscape/math/math_evaluation/outputs"
+    base_path = "/volume/pt-train/users/wzhang/ghchen/zh/valid_code/ASFT/math_evaluation/outputs"
     
     
     # 查找匹配前缀的目录
@@ -59,4 +60,4 @@ def print_markdown_table(prefix):
 
 # 使用示例
 if __name__ == "__main__":
-    print_markdown_table("Llama-2-7b")
+    print_markdown_table("alpha")
