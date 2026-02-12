@@ -31,6 +31,9 @@ This ensures **tightness + stability**, combining the best of SFT and RL while k
 
 ## 📰 News
 
+**📄 2026-02-12**: ASFT has been merged into LLaMA-Factory main ([commit #10174](https://github.com/hiyouga/LLaMA-Factory/commit/675ce8cc7f70a65de403ccfd05195ca3ea6f3bd4)).  
+Latest release is `v0.9.4`, so ASFT support is currently available on main and will be included in the next tagged release.
+
 **📄 2026-01-30**: Accepted to ICLR 2026.
 
 **📄 2026-01-23**: Added support for DeepSpeed and LoRA.
