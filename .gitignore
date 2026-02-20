@@ -13,6 +13,7 @@ wandb/
 output/
 experiment/
 data/
+models/
 *.sqlite3
 .DS_Store
 .ipynb_checkpoints/
