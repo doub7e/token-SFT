@@ -70,7 +70,9 @@ class TrainingArguments(transformers.TrainingArguments):
     learning_rate: float = field(default=2e-5)
 
 class EnhancedTrainer(Trainer):
-    def __init__(self, mode="sft", kl_weight=0.1, clip_min=0.1, clip_max=2.0, alpha=0.1, original_model=None, *args, **kwargs):
+    def __init__(self, mode="sft", kl_weight=0.1, clip_min=0.1, clip_max=2.0, alpha=0.1, original_model=None,
+                 topk_keep_ratio=0.7, antiop_clip_mult=3.0, lr_weight_alpha=1.0, lr_weight_clamp_max=5.0,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mode = mode
         self.kl_weight = kl_weight
@@ -78,9 +80,19 @@ class EnhancedTrainer(Trainer):
         self.clip_max = clip_max
         self.alpha = alpha
         self.original_model = original_model
+        self._last_batch = None
+        # New weighting hyperparams
+        self.topk_keep_ratio = topk_keep_ratio
+        self.antiop_clip_mult = antiop_clip_mult
+        self.lr_weight_alpha = lr_weight_alpha
+        self.lr_weight_clamp_max = lr_weight_clamp_max
         if original_model is not None:
             self.original_model.eval()
         print(f"Training mode: {mode}, alpha: {alpha}")
+
+    def training_step(self, model, inputs, num_items_in_batch=None):
+        self._last_batch = inputs
+        return super().training_step(model, inputs, num_items_in_batch)
     
     def get_reference_logits(self, model, inputs):
         """
@@ -183,6 +195,62 @@ class EnhancedTrainer(Trainer):
 
                     weighted_losses = dft_losses + self.kl_weight * kl_div
 
+                # ── Scheme A: Top-K Selective Loss ──────────────────────
+                # Drop highest-loss tokens (likely opposing gradient direction).
+                # Keep only top-K% lowest-loss tokens among valid positions.
+                elif self.mode == "sft-topk":
+                    valid_losses = token_losses[valid_mask]
+                    k = max(1, int(valid_losses.numel() * self.topk_keep_ratio))
+                    threshold = valid_losses.topk(k, largest=False).values[-1]
+                    keep_mask = token_losses <= threshold  # keep low-loss tokens
+                    combined_mask = valid_mask & keep_mask
+                    if combined_mask.sum() == 0:
+                        combined_mask = valid_mask  # fallback: keep all valid
+                    weighted_losses = token_losses
+                    # Override valid_mask for the final loss computation below
+                    valid_mask = combined_mask
+
+                # ── Scheme D: Anti-Opposing Soft Clipping ───────────────
+                # Tokens with loss > c * median are likely opposing the
+                # aggregate gradient; soft-clip their contribution.
+                elif self.mode == "sft-antiop":
+                    valid_losses = token_losses[valid_mask]
+                    median_loss = valid_losses.median().detach()
+                    cap = self.antiop_clip_mult * median_loss
+                    # Soft weight: 1.0 for loss ≤ cap, decays for loss > cap
+                    w_t = torch.where(
+                        token_losses <= cap,
+                        torch.ones_like(token_losses),
+                        (cap / (token_losses + 1e-8)).detach(),
+                    )
+                    weighted_losses = token_losses * w_t
+
+                # ── Scheme C: Likelihood Ratio Weighting ────────────────
+                # Upweight tokens where p_ref > p_θ (model got worse),
+                # downweight tokens where model already improved beyond ref.
+                # Uses additive difference (bounded in [-1,1]) instead of
+                # multiplicative ratio to avoid loss explosion from
+                # positive correlation between CE and p_ref/p_t.
+                elif self.mode == "sft-lr":
+                    with torch.no_grad():
+                        ref_logits = self.get_reference_logits(model, inputs)
+                        ref_logits = ref_logits[..., :-1, :].contiguous()
+                        ref_logits = ref_logits.view(-1, ref_logits.size(-1))[:shift_logits.size(0)]
+
+                    probs = torch.softmax(shift_logits, dim=-1)
+                    ref_probs = torch.softmax(ref_logits, dim=-1)
+                    valid_labels = torch.clamp(shift_labels, min=0, max=probs.size(-1) - 1)
+                    p_t = probs.gather(1, valid_labels.unsqueeze(-1)).squeeze(-1).detach()
+                    p_ref_t = ref_probs.gather(1, valid_labels.unsqueeze(-1)).squeeze(-1).detach()
+                    # Additive difference: bounded in [-1, 1], no ratio explosion
+                    # w_t > 1 when model got worse (p_ref > p_t) → upweight
+                    # w_t < 1 when model improved (p_ref < p_t) → downweight
+                    diff = (p_ref_t - p_t).clamp(-1.0, 1.0)
+                    w_t = (1.0 + self.lr_weight_alpha * diff).clamp(min=0.1).detach()
+                    weighted_losses = token_losses * w_t
+
+                else:
+                    raise ValueError(f"Unknown training mode: {self.mode}")
 
                 loss = (weighted_losses[valid_mask].sum() / valid_mask.sum())
 
@@ -331,6 +399,16 @@ def train(
     gradient_checkpointing: bool = False,
     seed: int = 42,
     max_steps: int = -1,
+    # Token weighting hyperparams
+    topk_keep_ratio: float = 0.7,          # sft-topk: keep lowest K% loss tokens
+    antiop_clip_mult: float = 3.0,         # sft-antiop: soft-clip at c * median
+    lr_weight_alpha: float = 1.0,          # sft-lr: (unused, reserved)
+    lr_weight_clamp_max: float = 5.0,      # sft-lr: clamp max for p_ref/p_theta
+    # Trace args
+    trace_every_n_steps: int = 0,
+    trace_proj_dim_factor: int = 256,
+    trace_output_dir: str = None,
+    trace_module_filter: str = "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
     **kwargs
 ):
     """Enhanced training with multiple DFT variants"""
@@ -465,7 +543,8 @@ def train(
 
     # Load original model for KL modes
     original_model = None
-    if ("kl" in mode or mode == "asft") and not use_lora:
+    _needs_ref = ("kl" in mode or mode == "asft" or mode == "sft-lr")
+    if _needs_ref and not use_lora:
         print("Loading original model for KL divergence...")
 
         original_model_kwargs = {
@@ -545,12 +624,31 @@ def train(
         clip_min=clip_min,
         clip_max=clip_max,
         original_model=original_model,
+        topk_keep_ratio=topk_keep_ratio,
+        antiop_clip_mult=antiop_clip_mult,
+        lr_weight_alpha=lr_weight_alpha,
+        lr_weight_clamp_max=lr_weight_clamp_max,
         model=model,
         tokenizer=tokenizer,
         args=training_args,
         **data_module
     )
     
+    if trace_every_n_steps > 0:
+        from token_grad_tracer import TokenGradTraceCallback
+        _trace_dir = trace_output_dir or os.path.join(output_dir, "token_grad_trace")
+        trace_cb = TokenGradTraceCallback(
+            trainer=trainer,
+            trace_every_n_steps=trace_every_n_steps,
+            trace_proj_dim_factor=trace_proj_dim_factor,
+            trace_output_dir=_trace_dir,
+            trace_module_filter=trace_module_filter,
+        )
+        trainer.add_callback(trace_cb)
+        print(f"[TokenGradTrace] Enabled: every {trace_every_n_steps} steps, "
+              f"proj_dim_factor={trace_proj_dim_factor}, filter={trace_module_filter}, "
+              f"output_dir={_trace_dir}")
+
     trainer.train()
     trainer.save_model(training_args.output_dir)
     # tokenizer.save_pretrained(training_args.output_dir)
